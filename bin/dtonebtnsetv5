@@ -1,0 +1,87 @@
+#!/bin/bash
+
+
+# Hadoop 相關設定檔路徑
+tem="/home/bigboss/vmusdt/bin/templates"
+test="/home/bigboss/vmusdt/bin/testConfig"
+log="/home/bigboss/test_log.txt"
+file="/home/bigboss/test_settings.csv"
+
+
+# 確認相關檔案、路徑無誤
+echo "templates  :	${tem}"
+echo "test config:	${test}"
+echo "test log   :	${log}"
+read -p "Begin test? (YES/NO) " ans
+[ "${ans}" != "YES" ] && echo "abort test" && exit 1
+
+# 建立存取測試結果的檔案(已存在時清空)
+#touch ${log}
+echo -e "Test time: $(date +"%Y/%m/%d %T")\n" > ${log}
+
+# w=需要收到檔案設定的worker機
+# n=判斷要copy那些設定檔案
+w=$(cat /etc/hosts | grep -E "^192.168" | tr -s ' ' | cut -d ' ' -f2)
+n=$(ls ~/vmusdt/hdp33/opt)
+
+# sed will generate a new file with e added to end of file name, recommand using perl solution below instead
+#sed -ie "s/\r//g" $file 
+perl -pi -e "s/\r//g" test_settings.csv
+
+i=1
+while true
+do
+  j=$((i+2))
+  c=$(head -1 $file | cut -d ',' -f${j})
+  [ "${c}" == "" ] && echo "All settings loaded" && exit 0
+
+  export NAME_NODE=$(cat $file | grep 'namenode_host' | cut -d ',' -f${j})
+  export HDP_ADMIN=$(cat $file | grep 'administrator' | cut -d ',' -f${j})
+  export REPLICATIONS=$(cat $file | grep 'replication' | cut -d ',' -f${j})
+  export RESOURCE_MANAGER=$(cat $file | grep 'resourcemanager_host' | cut -d ',' -f${j})
+  export NMANAGER_RAM=$(cat $file | grep 'nodemanager_ram(mb)' | cut -d ',' -f${j})
+  export NMANAGER_CPU=$(cat $file | grep 'nodemanager_cpu(logic)' | cut -d ',' -f${j})
+  export CMIN_RAM=$(cat $file | grep 'container_minram(mb)' | cut -d ',' -f${j})
+  export CMAX_RAM=$(cat $file | grep 'container_maxram(mb)' | cut -d ',' -f${j})
+  export RED_T_RAM=$(cat $file | grep 'reduce_ram(mb)' | cut -d ',' -f${j})
+  export RED_H_RAM=$(cat $file | grep 'reduce_heap_ram(mb)' | cut -d ',' -f${j})
+  export MAP_T_RAM=$(cat $file | grep 'map_ram(mb)' | cut -d ',' -f${j})
+  export MAP_H_RAM=$(cat $file | grep 'map_heap_ram(mb)' | cut -d ',' -f${j})
+
+  cat ${tem}/core-site.xml.template | envsubst > ${test}/hadoop-3.3.3/core-site.xml
+  cat ${tem}/hdfs-site.xml.template | envsubst > ${test}/hadoop-3.3.3/hdfs-site.xml
+  cat ${tem}/yarn-site.xml.template | envsubst > ${test}/hadoop-3.3.3/yarn-site.xml
+  cat ${tem}/mapred-site.xml.template | envsubst > ${test}/hadoop-3.3.3/mapred-site.xml
+
+
+  #==========複製設定到所有機器==========
+  for x in $w
+  do
+    nc -w 1 -z $x 22 &>/dev/null
+    [ "$?" != "0" ] && continue
+
+    # copy建立好的範例設定檔到 /opt/hadoop-3.3.3/etc/hadoop
+    # 加入grep限制只copy hadoop相關的設定，但實質應可用於所有相關套件?
+    for y in $n
+    do
+      echo "${y}" | grep 'hadoop-' &>/dev/null
+      [ "$?" == "0" ] && scp ${test}/$y/* bigboss@$x:/opt/$y/etc/hadoop/ &>/dev/null
+      [ "$?" == "0" ] && echo "$x $y config ok" && continue
+    done
+  done
+  #==========複製設定到所有機器結束==========
+
+  #==========設定測試開始==========
+  echo -n "Testing $c..."
+  echo -e "$c test results\n===================="&>/dev/null >> ${log}
+  starthdfs &>/dev/null
+  [ "$?" != 0 ] && echo "hdfs start failed, aborting..." && stophdfs &>/dev/null
+  startyarn &>/dev/null
+  [ "$?" == 0 ] && (time dtest &>/dev/null; [ "$?" != "0" ] && echo "Error during testing" && exit 1) 2>> ${log}
+  stopyarn &>/dev/null
+  stophdfs &>/dev/null
+  echo "complete. Result added to ${log}"
+  #==========設定測試結束==========
+
+  let "i++"
+done

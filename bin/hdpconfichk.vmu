@@ -1,0 +1,71 @@
+#!/bin/bash
+
+[ "$#" != 1 ] && echo "Enter Hadoop version" && exit 1
+[ ! -d ~/vmusdt/hdp${1}/opt ] && echo "Hadoop version ${1} not found" && exit 1
+
+if [ "${1}" == "33" ]; then
+  hdpver=3.3.3
+elif [ "${1}" == "210" ]; then
+  hdpver=2.1.0
+else
+  echo "Wrong version" && exit 1
+fi
+
+# Hadoop 相關設定檔
+core="vmusdt/hdp${1}/conf/hadoop-${hdpver}/core-site.xml"
+hdfs="vmusdt/hdp${1}/conf/hadoop-${hdpver}/hdfs-site.xml"
+yarn="vmusdt/hdp${1}/conf/hadoop-${hdpver}/yarn-site.xml"
+mapred="vmusdt/hdp${1}/conf/hadoop-${hdpver}/mapred-site.xml"
+
+
+#echo "Core-site file: ${core}"
+#echo "hdfs-site file: ${hdfs}"
+#echo "yarn-site file: ${yarn}"
+
+# core-site.xml檔案重要設定
+if [ "${1}" == "33" ]; then
+  nn=$(cat "${core}" | grep -A 1 '<name>fs.defaultFS</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+elif [ "${1}" == "210" ]; then
+  nn=$(cat "${core}" | grep -A 1 '<name>fs.default.name</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+else
+  echo "Wrong version" && exit 1
+fi
+
+
+# hdfs-site.xml檔案重要設定
+nnd=$(cat "${hdfs}" | grep -A 1 '<name>dfs.namenode.name.dir</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+dnd=$(cat "${hdfs}" | grep -A 1 '<name>dfs.datanode.data.dir</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+r=$(cat "${hdfs}" | grep -A 1 'dfs.replication' | grep -oP '(?<=<value>).+(?=</value>)')
+
+
+# yarn-site.xml檔案重要設定
+rmg=$(cat "${yarn}" | grep -A 1 '<name>yarn.resourcemanager.hostname</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+nmd=$(cat "${yarn}" | grep -A 1 '<name>yarn.nodemanager.local-dirs</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+rpnm=$(cat "${yarn}" | grep -A 1 '<name>yarn.nodemanager.resource.memory-mb</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+lcpu=$(cat "${yarn}" | grep -A 1 '<name>yarn.nodemanager.resource.cpu-vcores</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+cminr=$(cat "${yarn}" | grep -A 1 '<name>yarn.scheduler.minimum-allocation-mb</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+cmaxr=$(cat "${yarn}" | grep -A 1 '<name>yarn.scheduler.maximum-allocation-mb</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+
+
+# mapred-site.xml檔案重要設定
+redmaxram=$(cat "${mapred}" | grep -A 1 '<name>mapreduce.reduce.memory.mb</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+redheapram=$(cat "${mapred}" | grep -A 1 '<name>mapreduce.reduce.java.opts</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+mapmaxram=$(cat "${mapred}" | grep -A 1 '<name>mapreduce.map.memory.mb</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+mapheapram=$(cat "${mapred}" | grep -A 1 '<name>mapreduce.map.java.opts</name>' | grep -oP '(?<=<value>).+(?=</value>)')
+
+
+echo "Name Node: ${nn}"
+echo "Name Node dir: ${nnd}"
+echo "Data Node dir: ${dnd}"
+echo "Replications: ${r}"
+echo "Resource Manager: ${rmg}"
+echo "Node Manager dir: ${nmd}"
+echo "Node Manager Ram: ${rpnm}"
+echo "Logic CPUs: ${lcpu}"
+echo "Min Ram per container: ${cminr}"
+echo "Max Ram per container: ${cmaxr}"
+echo "Reduce ram: ${redmaxram}"
+echo "Reduce heap ram: ${redheapram}"
+echo "Map ram: ${mapmaxram}"
+echo "Map heap ram: ${mapheapram}"
+

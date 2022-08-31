@@ -1,0 +1,25 @@
+#!/bin/bash
+
+uname=$(cat accounts.csv | tr -s ' ' |cut -d ',' -f1)
+#uname=$(perl -pi -e "s/\r//g" test_settings.csv | cat | tr -s ' ' | cut -d ',' -f1)
+#uname=$(sed -ie "s/\r//g" accounts.csv | cat | cut -d ',' -f1)
+
+for u in $uname
+do
+  # 確認使用者是否存在，存在時跳到檔案中下一個使用者
+  cat /etc/passwd | grep ${u} &>/dev/null
+  [ "$?" == "0" ] && echo "$u exist" && continue
+
+  # 建立使用者帳號、shell使用/bin/bash、家目錄=使用者名
+  password=$(cat accounts.csv | grep $u | cut -d',' -f2)
+  sudo useradd -s /bin/bash -m $u &>/dev/null
+  echo -e "${u}\n${u}" | sudo passwd $u &>/dev/null
+  [ "$?" == "0" ] && echo "$u created"
+
+  # 在 HDFS 建置使用者家目錄、把家目錄權限交給使用者
+  hdfs dfs -mkdir -p /user/${u}
+  hdfs dfs -chown ${u}:${u} /user/${u}
+  [ "$?" != "0" ] && echo "${u} HDFS home not ok!" && continue
+  echo "${u} HDFS home ok!"
+  
+done

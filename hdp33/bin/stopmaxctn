@@ -1,0 +1,9 @@
+#!/bin/bash
+
+for n in dtw1 dtw2 dtw3 dtw4
+do
+  ssh $n 'touch /tmp/maxjlog.stop'
+  ssh $n "cat /tmp/jps-$n.log | uniq" 
+  echo ""
+done
+

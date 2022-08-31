@@ -1,0 +1,10 @@
+#!/bin/bash
+
+w=$(cat /etc/hosts | grep -E "dt" | tr -s ' ' | cut -d ' ' -f3)
+
+for n in $w
+do
+  echo -n "$n kernal: " && ssh bigboss@$n uname -r
+done
+
+

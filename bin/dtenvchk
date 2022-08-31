@@ -1,0 +1,11 @@
+#!/bin/bash
+
+w=$(cat /etc/hosts | grep -E "dt" | tr -s ' ' | cut -d ' ' -f3)
+
+for n in $w
+do
+  echo "[$n]"
+  echo -n "java version: " && ssh bigboss@$n java -version | cat |head -1
+  echo -n "python verion: " && ssh bigboss@$n python3 --version
+  echo ""
+done

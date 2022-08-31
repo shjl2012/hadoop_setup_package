@@ -1,0 +1,42 @@
+#!/bin/bash
+
+w=$(cat /etc/hosts | grep -E " dt*" | tr -s ' ' | cut -d ' ' -f3)
+
+[ "$#" != 1 ] && echo "dtconf version" && exit 1
+
+[ ! -d ~/vmusdt/hdp${1}/opt ] && echo "~/vmusdt/hdp${1}/opt not found" && exit 1
+
+n=$(ls ~/vmusdt/hdp${1}/opt)
+
+for x in $w
+do
+   nc -w 1 -z $x 22 &>/dev/null
+   [ "$?" != "0" ] && continue
+
+   for y in $n
+   do
+     echo "$y" | grep 'hadoop-' &>/dev/null
+     [ "$?" == "0" ] && scp ~/vmusdt/hdp${1}/conf/$y/* bigboss@$x:/opt/$y/etc/hadoop/ &>/dev/null && echo "$x $y config ok" && continue
+     [ -d ~/vmusdt/hdp${1}/conf/$y ] && scp ~/vmusdt/hdp${1}/conf/$y/* bigboss@$x:/opt/$y/conf/ &>/dev/null
+     [ "$?" == "0" ] && echo "$x $y config ok"
+   done
+
+   ssh $x 'sudo rm /etc/environment &>/dev/null'
+   scp -r ~/vmusdt/hdp${1}/environment bigboss@$x:~/.ssh/environment &>/dev/null
+   [ "$?" == "0" ] && echo "$x environment ok"
+
+   scp ~/vmusdt/hdp${1}/bin/*  bigboss@$x:/opt/bin &>/dev/null
+   [ "$?" == "0" ] && echo "$x /opt/bin ok"
+
+   scp /etc/hosts $x:~ &>/dev/null
+   ssh $x 'sudo mv hosts /etc/hosts'
+   [ "$?" == "0" ] && echo "$x /etc/hosts ok"
+
+   scp -r ~/vmusdt/hdp${1}/us.bash bigboss@$x:~/us.bash &>/dev/null
+   ssh bigboss@$x sudo mv ~/us.bash /etc/profile.d/us.sh &>/dev/null
+   ssh bigboss@$x sudo chmod 644 /etc/profile.d/us.sh
+   ssh bigboss@$x sudo chown root:root /etc/profile.d/us.sh
+   [ "$?" == "0" ] && echo "$x /etc/profile.d/us.sh ok"
+
+   echo ""
+done

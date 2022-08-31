@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# 一鍵 reboot HDFS 系統中所有機器
+
+a="dta1"
+m=$(cat /etc/hosts | grep -e 'dtm[0-9]' | tr -s ' ' | cut -d ' ' -f3 | sort -r)
+w=$(cat /etc/hosts | grep -e 'dtw[0-9]' | tr -s ' ' | cut -d ' ' -f3 | sort -r)
+
+# 檢查執行命令的主機，不是dta1的話跳出警告停止
+n=$(hostname)
+[ "$n" != "${a}" ] && echo "please reboot from ${a}" && exit 1
+
+# 依序從 dtw => dtm => dta 重開機
+for machine in $w $m $a
+do
+  ssh ${machine} sudo reboot
+  sleep 5
+done

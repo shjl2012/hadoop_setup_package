@@ -1,0 +1,8 @@
+#!/bin/bash
+
+w=$(cat /etc/hosts | grep -e ' dtw[0-9]' | tr -s ' ' | cut -d' ' -f2)
+
+for n in $w
+do
+  ssh $n 'nohup jpslog.sh &>/dev/null &'
+done

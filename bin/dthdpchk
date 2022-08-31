@@ -1,0 +1,18 @@
+#!/bin/bash
+
+#m="dta1 dtm1 dtm2"
+#w="dtw1 dtw2 dtw3 dtw4"
+
+w=$(cat /etc/hosts | grep -E "^192.168" | tr -s ' ' | cut -d ' ' -f2)
+
+for n in $w
+do
+   nc -w 1 -z $n 22 &>/dev/null
+   if [ "$?" == "0" ]; then
+      echo "[$n]"
+      ssh $n 'hadoop version | head -n 1'
+      ssh $n 'hadoop checknative'
+
+      echo ""
+   fi
+done

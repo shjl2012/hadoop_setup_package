@@ -1,0 +1,10 @@
+#!/bin/bash
+
+hostnames=$(cat /etc/hosts | grep -E "dt" | tr -s ' ' | cut -d ' ' -f3)
+
+for name in $hostnames
+do
+  nc -w 1 -z $name 22 &>/dev/null
+  [ "$?" == "0" ] && echo "$name ok" && continue
+  echo "$name not ok!"
+done

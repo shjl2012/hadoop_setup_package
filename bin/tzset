@@ -1,0 +1,11 @@
+#!/bin/bash
+
+w=$(cat /etc/hosts | grep -E "dt" | tr -s ' ' | cut -d ' ' -f2)
+
+for n in $w
+do
+   nc -w 1 -z $n 22 &>/dev/null
+   # [ "$?" == "0" ] && ssh bigboss@${n} timedatectl show --property=Timezone &>/dev/null
+   [ "$?" == "0" ] && ssh bigboss@"${n}" sudo timedatectl set-timezone "Asia/Taipei" &>/dev/null
+   [ "$?" == "0" ] && echo "$n timezone ok!"
+done
